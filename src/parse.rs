@@ -63,8 +63,7 @@ impl Parser {
 
     // expr = assign
     fn expr(&mut self) -> Node {
-        let node = self.assign();
-        node
+        self.assign()
     }
 
     // assign = equality ("=" assign)?

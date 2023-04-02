@@ -11,6 +11,12 @@ pub struct Evaluator {
     local_variables: HashMap<String, i32>,
 }
 
+impl Default for Evaluator {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl Evaluator {
     pub fn new() -> Self {
         let local_variables = HashMap::new();

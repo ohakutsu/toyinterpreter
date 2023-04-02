@@ -111,10 +111,10 @@ fn is_punct(c: char) -> bool {
     "!#%&()*+,-./:;<=>?[]{|}~".contains(c)
 }
 fn is_alphabet(c: char) -> bool {
-    if 'a' <= c && c <= 'z' {
+    if ('a'..='z').contains(&c) {
         return true;
     }
-    if 'A' <= c && c <= 'Z' {
+    if ('A'..='Z').contains(&c) {
         return true;
     }
     if c == '_' {
@@ -124,7 +124,7 @@ fn is_alphabet(c: char) -> bool {
     false
 }
 fn is_number(c: char) -> bool {
-    '0' <= c && c <= '9'
+    ('0'..='9').contains(&c)
 }
 fn is_keyword(s: &str) -> bool {
     ["print", "exit", "time", "if"].contains(&s)

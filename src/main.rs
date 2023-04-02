@@ -1,5 +1,4 @@
 use std::{env, fs};
-use toyinterpreter;
 
 fn main() -> Result<(), ()> {
     let args = env::args().collect::<Vec<String>>();
