@@ -276,14 +276,16 @@ mod tests {
     fn test_evaluator_for() {
         assert_eval(
             "i = 0;\
-             for (i = 0; i < 3; i = i + 1) print i;",
-            &[Some(Object::Num(0)), None],
+             for (i = 0; i < 3; i = i + 1) print i;\
+             i;",
+            &[Some(Object::Num(0)), None, Some(Object::Num(3))],
         );
 
         assert_eval(
             "i = 0;\
-             for (; i < 3;) i = i + 1;",
-            &[Some(Object::Num(0)), None],
+             for (; i < 3;) i = i + 1;\
+             i;",
+            &[Some(Object::Num(0)), None, Some(Object::Num(3))],
         );
     }
 }
