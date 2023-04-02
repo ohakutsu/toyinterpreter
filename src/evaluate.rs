@@ -51,6 +51,12 @@ impl Evaluator {
                 }
                 None
             }
+            Node::Print(val) => {
+                let obj = self.eval_expr(val);
+                let n = self.expect_num_obj(&obj);
+                println!("{}", n);
+                None
+            }
             _ => Some(self.eval_expr(node)),
         }
     }
@@ -225,6 +231,15 @@ mod tests {
              if (i > 3) i = 0;\
              i;",
             &[Some(Object::Num(2)), None, Some(Object::Num(2))],
+        );
+    }
+
+    #[test]
+    fn test_evaluator_print() {
+        assert_eval(
+            "i = 2;\
+             print i;",
+            &[Some(Object::Num(2)), None],
         );
     }
 }

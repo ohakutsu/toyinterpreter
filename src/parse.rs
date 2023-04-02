@@ -15,6 +15,7 @@ pub enum Node {
     LT(Box<Node>, Box<Node>),     // "<"
     GT(Box<Node>, Box<Node>),     // ">"
     If(Box<Node>, Box<Node>),     // "if" "(" cond ")" then
+    Print(Box<Node>),             // "print"
 }
 
 pub struct Parser {
@@ -38,6 +39,7 @@ impl Parser {
     }
 
     // stmt = "if" "(" expr ")" stmt
+    //      | "print" expr ";"
     //      | expr ";"
     fn stmt(&mut self) -> Node {
         if self.consume_token(Token::Keyword("if".to_string())) {
@@ -46,6 +48,12 @@ impl Parser {
             self.expect_token(Token::Punct(")".to_string()));
             let then = self.stmt();
             return Node::If(Box::new(cond), Box::new(then));
+        }
+
+        if self.consume_token(Token::Keyword("print".to_string())) {
+            let val = self.expr();
+            self.expect_token(Token::Punct(";".to_string()));
+            return Node::Print(Box::new(val));
         }
 
         let node = self.expr();
@@ -147,7 +155,7 @@ mod tests {
     use crate::parse::*;
     use crate::token::Tokenizer;
 
-    fn parse_test(input: &str, expect: Vec<Node>) {
+    fn assert_nodes(input: &str, expect: Vec<Node>) {
         let tokens = Tokenizer::new(input).collect::<Vec<_>>();
         let mut parser = Parser::new(tokens);
         let nodes = parser.parse();
@@ -156,7 +164,7 @@ mod tests {
 
     #[test]
     fn test_parser() {
-        parse_test(
+        assert_nodes(
             "abc = 123;\
              def = 456;\
              ans = abc + def;",
@@ -179,7 +187,7 @@ mod tests {
             ],
         );
 
-        parse_test(
+        assert_nodes(
             "i = 0;\
              if (i <= 10) i = i + 10;",
             vec![
@@ -200,6 +208,18 @@ mod tests {
                         )),
                     )),
                 ),
+            ],
+        );
+
+        assert_nodes(
+            "i = 2;\
+             print i;",
+            vec![
+                Node::Assign(
+                    Box::new(Node::LVar("i".to_string())),
+                    Box::new(Node::Num(2)),
+                ),
+                Node::Print(Box::new(Node::LVar("i".to_string()))),
             ],
         );
     }
