@@ -16,6 +16,12 @@ pub enum Node {
     GT(Box<Node>, Box<Node>),     // ">"
     If(Box<Node>, Box<Node>),     // "if" "(" cond ")" then
     Print(Box<Node>),             // "print"
+    For(
+        Option<Box<Node>>,
+        Option<Box<Node>>,
+        Option<Box<Node>>,
+        Box<Node>,
+    ), // "for" "(" init ";" cond ";" inc ")" then
 }
 
 pub struct Parser {
@@ -39,6 +45,7 @@ impl Parser {
     }
 
     // stmt = "if" "(" expr ")" stmt
+    //      | "for" "(" expr? ";" expr? ";" expr? ")" stmt
     //      | "print" expr ";"
     //      | expr ";"
     fn stmt(&mut self) -> Node {
@@ -48,6 +55,29 @@ impl Parser {
             self.expect_token(Token::Punct(")".to_string()));
             let then = self.stmt();
             return Node::If(Box::new(cond), Box::new(then));
+        }
+
+        if self.consume_token(Token::Keyword("for".to_string())) {
+            let mut init = None;
+            let mut cond = None;
+            let mut inc = None;
+            self.expect_token(Token::Punct("(".to_string()));
+
+            if !self.consume_token(Token::Punct(";".to_string())) {
+                init = Some(Box::new(self.expr()));
+                self.expect_token(Token::Punct(";".to_string()));
+            }
+            if !self.consume_token(Token::Punct(";".to_string())) {
+                cond = Some(Box::new(self.expr()));
+                self.expect_token(Token::Punct(";".to_string()));
+            }
+            if !self.consume_token(Token::Punct(")".to_string())) {
+                inc = Some(Box::new(self.expr()));
+                self.expect_token(Token::Punct(")".to_string()));
+            }
+
+            let then = Box::new(self.stmt());
+            return Node::For(init, cond, inc, then);
         }
 
         if self.consume_token(Token::Keyword("print".to_string())) {
@@ -219,6 +249,52 @@ mod tests {
                     Box::new(Node::Num(2)),
                 ),
                 Node::Print(Box::new(Node::LVar("i".to_string()))),
+            ],
+        );
+
+        assert_nodes(
+            "i = 0;\
+             for (i = 0; i < 10; i = i + 1) print i;",
+            vec![
+                Node::Assign(
+                    Box::new(Node::LVar("i".to_string())),
+                    Box::new(Node::Num(0)),
+                ),
+                Node::For(
+                    Some(Box::new(Node::Assign(
+                        Box::new(Node::LVar("i".to_string())),
+                        Box::new(Node::Num(0)),
+                    ))),
+                    Some(Box::new(Node::LT(
+                        Box::new(Node::LVar("i".to_string())),
+                        Box::new(Node::Num(10)),
+                    ))),
+                    Some(Box::new(Node::Assign(
+                        Box::new(Node::LVar("i".to_string())),
+                        Box::new(Node::Add(
+                            Box::new(Node::LVar("i".to_string())),
+                            Box::new(Node::Num(1)),
+                        )),
+                    ))),
+                    Box::new(Node::Print(Box::new(Node::LVar("i".to_string())))),
+                ),
+            ],
+        );
+
+        assert_nodes(
+            "i = 0;\
+             for (;;) print i;",
+            vec![
+                Node::Assign(
+                    Box::new(Node::LVar("i".to_string())),
+                    Box::new(Node::Num(0)),
+                ),
+                Node::For(
+                    None,
+                    None,
+                    None,
+                    Box::new(Node::Print(Box::new(Node::LVar("i".to_string())))),
+                ),
             ],
         );
     }

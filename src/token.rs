@@ -127,7 +127,7 @@ fn is_number(c: char) -> bool {
     ('0'..='9').contains(&c)
 }
 fn is_keyword(s: &str) -> bool {
-    ["print", "exit", "time", "if"].contains(&s)
+    ["print", "exit", "time", "if", "for"].contains(&s)
 }
 
 #[cfg(test)]
@@ -200,5 +200,35 @@ mod tests {
                 Token::Punct(";".to_string()),
             ],
         );
+
+        assert_tokenize(
+            "i = 0;\
+             for (i = 0; i < 10; i = i + 1) print i;",
+            vec![
+                Token::Ident("i".to_string()),
+                Token::Punct("=".to_string()),
+                Token::Num(0),
+                Token::Punct(";".to_string()),
+                Token::Keyword("for".to_string()),
+                Token::Punct("(".to_string()),
+                Token::Ident("i".to_string()),
+                Token::Punct("=".to_string()),
+                Token::Num(0),
+                Token::Punct(";".to_string()),
+                Token::Ident("i".to_string()),
+                Token::Punct("<".to_string()),
+                Token::Num(10),
+                Token::Punct(";".to_string()),
+                Token::Ident("i".to_string()),
+                Token::Punct("=".to_string()),
+                Token::Ident("i".to_string()),
+                Token::Punct("+".to_string()),
+                Token::Num(1),
+                Token::Punct(")".to_string()),
+                Token::Keyword("print".to_string()),
+                Token::Ident("i".to_string()),
+                Token::Punct(";".to_string()),
+            ],
+        )
     }
 }

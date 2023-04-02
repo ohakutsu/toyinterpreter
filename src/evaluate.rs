@@ -57,6 +57,31 @@ impl Evaluator {
                 }
                 None
             }
+            Node::For(init, cond, inc, then) => {
+                if let Some(node) = init {
+                    self.eval_expr(node);
+                }
+                loop {
+                    let cond = match cond {
+                        Some(node) => {
+                            let obj = self.eval_expr(node);
+                            self.obj_to_bool(&obj)
+                        }
+                        None => true,
+                    };
+                    if !cond {
+                        break;
+                    }
+
+                    self.eval_stmt(then);
+
+                    if let Some(node) = inc {
+                        self.eval_expr(node);
+                    }
+                }
+
+                None
+            }
             Node::Print(val) => {
                 let obj = self.eval_expr(val);
                 let n = self.expect_num_obj(&obj);
@@ -140,9 +165,7 @@ impl Evaluator {
                 let n = self.get_lvar(name);
                 Object::Num(n)
             }
-            _ => {
-                panic!("")
-            }
+            _ => panic!("unknown node: {:?}", node),
         }
     }
 }
@@ -246,6 +269,21 @@ mod tests {
             "i = 2;\
              print i;",
             &[Some(Object::Num(2)), None],
+        );
+    }
+
+    #[test]
+    fn test_evaluator_for() {
+        assert_eval(
+            "i = 0;\
+             for (i = 0; i < 3; i = i + 1) print i;",
+            &[Some(Object::Num(0)), None],
+        );
+
+        assert_eval(
+            "i = 0;\
+             for (; i < 3;) i = i + 1;",
+            &[Some(Object::Num(0)), None],
         );
     }
 }
