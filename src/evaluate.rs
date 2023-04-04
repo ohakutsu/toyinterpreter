@@ -173,11 +173,11 @@ impl Evaluator {
 #[cfg(test)]
 mod tests {
     use crate::evaluate::*;
+    use crate::lexer::Lexer;
     use crate::parse::Parser;
-    use crate::token::Tokenizer;
 
     fn assert_eval(input: &str, expect_values: &[Option<Object>]) {
-        let tokens = Tokenizer::new(input).collect();
+        let tokens = Lexer::new(input).collect();
         let mut parser = Parser::new(tokens);
         let nodes = parser.parse();
         let mut evaluator = Evaluator::new();

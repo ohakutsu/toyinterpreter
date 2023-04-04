@@ -1,6 +1,6 @@
 use crate::evaluate::Evaluator;
+use crate::lexer::Lexer;
 use crate::parse::Parser;
-use crate::token::Tokenizer;
 use std::io::{self, Write};
 
 pub fn start() {
@@ -20,7 +20,7 @@ pub fn start() {
             break;
         }
 
-        let tokens = Tokenizer::new(input.trim()).collect();
+        let tokens = Lexer::new(input.trim()).collect();
         let nodes = Parser::new(tokens).parse();
 
         for node in nodes {

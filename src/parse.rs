@@ -49,45 +49,45 @@ impl Parser {
     //      | "print" expr ";"
     //      | expr ";"
     fn stmt(&mut self) -> Node {
-        if self.consume_token(Token::Keyword("if".to_string())) {
-            self.expect_token(Token::Punct("(".to_string()));
+        if self.consume_token(Token::KeywordIf) {
+            self.expect_token(Token::LParen);
             let cond = self.expr();
-            self.expect_token(Token::Punct(")".to_string()));
+            self.expect_token(Token::RParen);
             let then = self.stmt();
             return Node::If(Box::new(cond), Box::new(then));
         }
 
-        if self.consume_token(Token::Keyword("for".to_string())) {
+        if self.consume_token(Token::KeywordFor) {
             let mut init = None;
             let mut cond = None;
             let mut inc = None;
-            self.expect_token(Token::Punct("(".to_string()));
+            self.expect_token(Token::LParen);
 
-            if !self.consume_token(Token::Punct(";".to_string())) {
+            if !self.consume_token(Token::SemiColon) {
                 init = Some(Box::new(self.expr()));
-                self.expect_token(Token::Punct(";".to_string()));
+                self.expect_token(Token::SemiColon);
             }
-            if !self.consume_token(Token::Punct(";".to_string())) {
+            if !self.consume_token(Token::SemiColon) {
                 cond = Some(Box::new(self.expr()));
-                self.expect_token(Token::Punct(";".to_string()));
+                self.expect_token(Token::SemiColon);
             }
-            if !self.consume_token(Token::Punct(")".to_string())) {
+            if !self.consume_token(Token::RParen) {
                 inc = Some(Box::new(self.expr()));
-                self.expect_token(Token::Punct(")".to_string()));
+                self.expect_token(Token::RParen);
             }
 
             let then = Box::new(self.stmt());
             return Node::For(init, cond, inc, then);
         }
 
-        if self.consume_token(Token::Keyword("print".to_string())) {
+        if self.consume_token(Token::KeywordPrint) {
             let val = self.expr();
-            self.expect_token(Token::Punct(";".to_string()));
+            self.expect_token(Token::SemiColon);
             return Node::Print(Box::new(val));
         }
 
         let node = self.expr();
-        self.expect_token(Token::Punct(";".to_string()));
+        self.expect_token(Token::SemiColon);
         node
     }
 
@@ -99,7 +99,7 @@ impl Parser {
     // assign = equality ("=" assign)?
     fn assign(&mut self) -> Node {
         let mut node = self.equality();
-        if self.consume_token(Token::Punct("=".to_string())) {
+        if self.consume_token(Token::Assign) {
             node = Node::Assign(Box::new(node), Box::new(self.assign()));
         }
         node
@@ -109,9 +109,9 @@ impl Parser {
     fn equality(&mut self) -> Node {
         let mut node = self.relational();
         loop {
-            if self.consume_token(Token::Punct("==".to_string())) {
+            if self.consume_token(Token::Equal) {
                 node = Node::Eq(Box::new(node), Box::new(self.add()));
-            } else if self.consume_token(Token::Punct("!=".to_string())) {
+            } else if self.consume_token(Token::NotEqual) {
                 node = Node::Ne(Box::new(node), Box::new(self.add()));
             } else {
                 break;
@@ -124,13 +124,13 @@ impl Parser {
     fn relational(&mut self) -> Node {
         let mut node = self.add();
         loop {
-            if self.consume_token(Token::Punct("<".to_string())) {
+            if self.consume_token(Token::LessThan) {
                 node = Node::LT(Box::new(node), Box::new(self.add()));
-            } else if self.consume_token(Token::Punct("<=".to_string())) {
+            } else if self.consume_token(Token::LessThanEqual) {
                 node = Node::LE(Box::new(node), Box::new(self.add()));
-            } else if self.consume_token(Token::Punct(">".to_string())) {
+            } else if self.consume_token(Token::GreaterThan) {
                 node = Node::GT(Box::new(node), Box::new(self.add()));
-            } else if self.consume_token(Token::Punct(">=".to_string())) {
+            } else if self.consume_token(Token::GreaterThanEqual) {
                 node = Node::GE(Box::new(node), Box::new(self.add()));
             } else {
                 break;
@@ -143,9 +143,9 @@ impl Parser {
     fn add(&mut self) -> Node {
         let mut node = self.primary();
         loop {
-            if self.consume_token(Token::Punct("+".to_string())) {
+            if self.consume_token(Token::Plus) {
                 node = Node::Add(Box::new(node), Box::new(self.primary()));
-            } else if self.consume_token(Token::Punct("-".to_string())) {
+            } else if self.consume_token(Token::Minus) {
                 node = Node::Sub(Box::new(node), Box::new(self.primary()));
             } else {
                 break;
@@ -158,7 +158,7 @@ impl Parser {
     fn primary(&mut self) -> Node {
         let token = self.tokens.next();
         match token {
-            Some(Token::Num(n)) => Node::Num(n),
+            Some(Token::Int(n)) => Node::Num(n),
             Some(Token::Ident(name)) => Node::LVar(name),
             _ => panic!("unexpected token: {:?}", token),
         }
@@ -181,11 +181,11 @@ impl Parser {
 
 #[cfg(test)]
 mod tests {
+    use crate::lexer::Lexer;
     use crate::parse::*;
-    use crate::token::Tokenizer;
 
     fn assert_nodes(input: &str, expect: Vec<Node>) {
-        let tokens = Tokenizer::new(input).collect::<Vec<_>>();
+        let tokens = Lexer::new(input).collect::<Vec<_>>();
         let mut parser = Parser::new(tokens);
         let nodes = parser.parse();
         assert_eq!(nodes, expect);

@@ -1,16 +1,17 @@
 pub mod evaluate;
+pub mod lexer;
 pub mod parse;
 pub mod repl;
 pub mod token;
 
 use evaluate::Evaluator;
+use lexer::Lexer;
 use parse::Parser;
-use token::Tokenizer;
 
 pub fn exec(input: &str) {
     let mut evaluator = Evaluator::new();
 
-    let tokens = Tokenizer::new(input).collect();
+    let tokens = Lexer::new(input).collect();
     let nodes = Parser::new(tokens).parse();
 
     for node in nodes {
