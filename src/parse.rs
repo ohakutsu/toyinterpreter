@@ -1,3 +1,4 @@
+use crate::ast::{Expression, Infix, Literal, Statement};
 use crate::token::Token;
 use std::{iter::Peekable, vec::IntoIter};
 
@@ -35,26 +36,26 @@ impl Parser {
         Self { tokens }
     }
 
-    pub fn parse(&mut self) -> Vec<Node> {
-        let mut nodes = Vec::new();
+    pub fn parse(&mut self) -> Vec<Statement> {
+        let mut statements = Vec::new();
         while self.tokens.peek().is_some() {
             let node = self.stmt();
-            nodes.push(node);
+            statements.push(node);
         }
-        nodes
+        statements
     }
 
     // stmt = "if" "(" expr ")" stmt
     //      | "for" "(" expr? ";" expr? ";" expr? ")" stmt
     //      | "print" expr ";"
     //      | expr ";"
-    fn stmt(&mut self) -> Node {
+    fn stmt(&mut self) -> Statement {
         if self.consume_token(Token::KeywordIf) {
             self.expect_token(Token::LParen);
-            let cond = self.expr();
+            let cond = Box::new(self.expr());
             self.expect_token(Token::RParen);
-            let then = self.stmt();
-            return Node::If(Box::new(cond), Box::new(then));
+            let then = Box::new(self.stmt());
+            return Statement::If { cond, then };
         }
 
         if self.consume_token(Token::KeywordFor) {
@@ -77,42 +78,59 @@ impl Parser {
             }
 
             let then = Box::new(self.stmt());
-            return Node::For(init, cond, inc, then);
+            return Statement::For {
+                init,
+                cond,
+                inc,
+                then,
+            };
         }
 
         if self.consume_token(Token::KeywordPrint) {
             let val = self.expr();
             self.expect_token(Token::SemiColon);
-            return Node::Print(Box::new(val));
+            return Statement::Print(val);
         }
 
         let node = self.expr();
         self.expect_token(Token::SemiColon);
-        node
+        Statement::Expression(node)
     }
 
     // expr = assign
-    fn expr(&mut self) -> Node {
+    fn expr(&mut self) -> Expression {
         self.assign()
     }
 
     // assign = equality ("=" assign)?
-    fn assign(&mut self) -> Node {
+    fn assign(&mut self) -> Expression {
         let mut node = self.equality();
         if self.consume_token(Token::Assign) {
-            node = Node::Assign(Box::new(node), Box::new(self.assign()));
+            node = Expression::Infix {
+                op: Infix::Assign,
+                lhs: Box::new(node),
+                rhs: Box::new(self.assign()),
+            };
         }
         node
     }
 
     // equality = relational ("==" relational | "!=" relational)*
-    fn equality(&mut self) -> Node {
+    fn equality(&mut self) -> Expression {
         let mut node = self.relational();
         loop {
             if self.consume_token(Token::Equal) {
-                node = Node::Eq(Box::new(node), Box::new(self.add()));
+                node = Expression::Infix {
+                    op: Infix::Equal,
+                    lhs: Box::new(node),
+                    rhs: Box::new(self.add()),
+                };
             } else if self.consume_token(Token::NotEqual) {
-                node = Node::Ne(Box::new(node), Box::new(self.add()));
+                node = Expression::Infix {
+                    op: Infix::NotEqual,
+                    lhs: Box::new(node),
+                    rhs: Box::new(self.add()),
+                };
             } else {
                 break;
             }
@@ -121,17 +139,33 @@ impl Parser {
     }
 
     // relational = add ("<" add | "<=" add | ">" add | ">=" add)*
-    fn relational(&mut self) -> Node {
+    fn relational(&mut self) -> Expression {
         let mut node = self.add();
         loop {
             if self.consume_token(Token::LessThan) {
-                node = Node::LT(Box::new(node), Box::new(self.add()));
+                node = Expression::Infix {
+                    op: Infix::LessThan,
+                    lhs: Box::new(node),
+                    rhs: Box::new(self.add()),
+                };
             } else if self.consume_token(Token::LessThanEqual) {
-                node = Node::LE(Box::new(node), Box::new(self.add()));
+                node = Expression::Infix {
+                    op: Infix::LessThanEqual,
+                    lhs: Box::new(node),
+                    rhs: Box::new(self.add()),
+                };
             } else if self.consume_token(Token::GreaterThan) {
-                node = Node::GT(Box::new(node), Box::new(self.add()));
+                node = Expression::Infix {
+                    op: Infix::GreaterThan,
+                    lhs: Box::new(node),
+                    rhs: Box::new(self.add()),
+                };
             } else if self.consume_token(Token::GreaterThanEqual) {
-                node = Node::GE(Box::new(node), Box::new(self.add()));
+                node = Expression::Infix {
+                    op: Infix::GreaterThanEqual,
+                    lhs: Box::new(node),
+                    rhs: Box::new(self.add()),
+                };
             } else {
                 break;
             }
@@ -140,13 +174,21 @@ impl Parser {
     }
 
     // add = primary ("+" primary | "-" primary)*
-    fn add(&mut self) -> Node {
+    fn add(&mut self) -> Expression {
         let mut node = self.primary();
         loop {
             if self.consume_token(Token::Plus) {
-                node = Node::Add(Box::new(node), Box::new(self.primary()));
+                node = Expression::Infix {
+                    op: Infix::Plus,
+                    lhs: Box::new(node),
+                    rhs: Box::new(self.primary()),
+                };
             } else if self.consume_token(Token::Minus) {
-                node = Node::Sub(Box::new(node), Box::new(self.primary()));
+                node = Expression::Infix {
+                    op: Infix::Minus,
+                    lhs: Box::new(node),
+                    rhs: Box::new(self.primary()),
+                };
             } else {
                 break;
             }
@@ -155,11 +197,11 @@ impl Parser {
     }
 
     // primary = num | ident
-    fn primary(&mut self) -> Node {
+    fn primary(&mut self) -> Expression {
         let token = self.tokens.next();
         match token {
-            Some(Token::Int(n)) => Node::Num(n),
-            Some(Token::Ident(name)) => Node::LVar(name),
+            Some(Token::Int(n)) => Expression::Literal(Literal::Int(n)),
+            Some(Token::Ident(name)) => Expression::Ident(name),
             _ => panic!("unexpected token: {:?}", token),
         }
     }
@@ -181,10 +223,11 @@ impl Parser {
 
 #[cfg(test)]
 mod tests {
+    use crate::ast::*;
     use crate::lexer::Lexer;
     use crate::parse::*;
 
-    fn assert_nodes(input: &str, expect: Vec<Node>) {
+    fn assert_nodes(input: &str, expect: Vec<Statement>) {
         let tokens = Lexer::new(input).collect::<Vec<_>>();
         let mut parser = Parser::new(tokens);
         let nodes = parser.parse();
@@ -198,21 +241,25 @@ mod tests {
              def = 456;\
              ans = abc + def;",
             vec![
-                Node::Assign(
-                    Box::new(Node::LVar("abc".to_string())),
-                    Box::new(Node::Num(123)),
-                ),
-                Node::Assign(
-                    Box::new(Node::LVar("def".to_string())),
-                    Box::new(Node::Num(456)),
-                ),
-                Node::Assign(
-                    Box::new(Node::LVar("ans".to_string())),
-                    Box::new(Node::Add(
-                        Box::new(Node::LVar("abc".to_string())),
-                        Box::new(Node::LVar("def".to_string())),
-                    )),
-                ),
+                Statement::Expression(Expression::Infix {
+                    op: Infix::Assign,
+                    lhs: Box::new(Expression::Ident("abc".to_string())),
+                    rhs: Box::new(Expression::Literal(Literal::Int(123))),
+                }),
+                Statement::Expression(Expression::Infix {
+                    op: Infix::Assign,
+                    lhs: Box::new(Expression::Ident("def".to_string())),
+                    rhs: Box::new(Expression::Literal(Literal::Int(456))),
+                }),
+                Statement::Expression(Expression::Infix {
+                    op: Infix::Assign,
+                    lhs: Box::new(Expression::Ident("ans".to_string())),
+                    rhs: Box::new(Expression::Infix {
+                        op: Infix::Plus,
+                        lhs: Box::new(Expression::Ident("abc".to_string())),
+                        rhs: Box::new(Expression::Ident("def".to_string())),
+                    }),
+                }),
             ],
         );
 
@@ -220,23 +267,27 @@ mod tests {
             "i = 0;\
              if (i <= 10) i = i + 10;",
             vec![
-                Node::Assign(
-                    Box::new(Node::LVar("i".to_string())),
-                    Box::new(Node::Num(0)),
-                ),
-                Node::If(
-                    Box::new(Node::LE(
-                        Box::new(Node::LVar("i".to_string())),
-                        Box::new(Node::Num(10)),
-                    )),
-                    Box::new(Node::Assign(
-                        Box::new(Node::LVar("i".to_string())),
-                        Box::new(Node::Add(
-                            Box::new(Node::LVar("i".to_string())),
-                            Box::new(Node::Num(10)),
-                        )),
-                    )),
-                ),
+                Statement::Expression(Expression::Infix {
+                    op: Infix::Assign,
+                    lhs: Box::new(Expression::Ident("i".to_string())),
+                    rhs: Box::new(Expression::Literal(Literal::Int(0))),
+                }),
+                Statement::If {
+                    cond: Box::new(Expression::Infix {
+                        op: Infix::LessThanEqual,
+                        lhs: Box::new(Expression::Ident("i".to_string())),
+                        rhs: Box::new(Expression::Literal(Literal::Int(10))),
+                    }),
+                    then: Box::new(Statement::Expression(Expression::Infix {
+                        op: Infix::Assign,
+                        lhs: Box::new(Expression::Ident("i".to_string())),
+                        rhs: Box::new(Expression::Infix {
+                            op: Infix::Plus,
+                            lhs: Box::new(Expression::Ident("i".to_string())),
+                            rhs: Box::new(Expression::Literal(Literal::Int(10))),
+                        }),
+                    })),
+                },
             ],
         );
 
@@ -244,11 +295,12 @@ mod tests {
             "i = 2;\
              print i;",
             vec![
-                Node::Assign(
-                    Box::new(Node::LVar("i".to_string())),
-                    Box::new(Node::Num(2)),
-                ),
-                Node::Print(Box::new(Node::LVar("i".to_string()))),
+                Statement::Expression(Expression::Infix {
+                    op: Infix::Assign,
+                    lhs: Box::new(Expression::Ident("i".to_string())),
+                    rhs: Box::new(Expression::Literal(Literal::Int(2))),
+                }),
+                Statement::Print(Expression::Ident("i".to_string())),
             ],
         );
 
@@ -256,28 +308,33 @@ mod tests {
             "i = 0;\
              for (i = 0; i < 10; i = i + 1) print i;",
             vec![
-                Node::Assign(
-                    Box::new(Node::LVar("i".to_string())),
-                    Box::new(Node::Num(0)),
-                ),
-                Node::For(
-                    Some(Box::new(Node::Assign(
-                        Box::new(Node::LVar("i".to_string())),
-                        Box::new(Node::Num(0)),
-                    ))),
-                    Some(Box::new(Node::LT(
-                        Box::new(Node::LVar("i".to_string())),
-                        Box::new(Node::Num(10)),
-                    ))),
-                    Some(Box::new(Node::Assign(
-                        Box::new(Node::LVar("i".to_string())),
-                        Box::new(Node::Add(
-                            Box::new(Node::LVar("i".to_string())),
-                            Box::new(Node::Num(1)),
-                        )),
-                    ))),
-                    Box::new(Node::Print(Box::new(Node::LVar("i".to_string())))),
-                ),
+                Statement::Expression(Expression::Infix {
+                    op: Infix::Assign,
+                    lhs: Box::new(Expression::Ident("i".to_string())),
+                    rhs: Box::new(Expression::Literal(Literal::Int(0))),
+                }),
+                Statement::For {
+                    init: Some(Box::new(Expression::Infix {
+                        op: Infix::Assign,
+                        lhs: Box::new(Expression::Ident("i".to_string())),
+                        rhs: Box::new(Expression::Literal(Literal::Int(0))),
+                    })),
+                    cond: Some(Box::new(Expression::Infix {
+                        op: Infix::LessThan,
+                        lhs: Box::new(Expression::Ident("i".to_string())),
+                        rhs: Box::new(Expression::Literal(Literal::Int(10))),
+                    })),
+                    inc: Some(Box::new(Expression::Infix {
+                        op: Infix::Assign,
+                        lhs: Box::new(Expression::Ident("i".to_string())),
+                        rhs: Box::new(Expression::Infix {
+                            op: Infix::Plus,
+                            lhs: Box::new(Expression::Ident("i".to_string())),
+                            rhs: Box::new(Expression::Literal(Literal::Int(1))),
+                        }),
+                    })),
+                    then: Box::new(Statement::Print(Expression::Ident("i".to_string()))),
+                },
             ],
         );
 
@@ -285,16 +342,17 @@ mod tests {
             "i = 0;\
              for (;;) print i;",
             vec![
-                Node::Assign(
-                    Box::new(Node::LVar("i".to_string())),
-                    Box::new(Node::Num(0)),
-                ),
-                Node::For(
-                    None,
-                    None,
-                    None,
-                    Box::new(Node::Print(Box::new(Node::LVar("i".to_string())))),
-                ),
+                Statement::Expression(Expression::Infix {
+                    op: Infix::Assign,
+                    lhs: Box::new(Expression::Ident("i".to_string())),
+                    rhs: Box::new(Expression::Literal(Literal::Int(0))),
+                }),
+                Statement::For {
+                    init: None,
+                    cond: None,
+                    inc: None,
+                    then: Box::new(Statement::Print(Expression::Ident("i".to_string()))),
+                },
             ],
         );
     }

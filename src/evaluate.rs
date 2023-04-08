@@ -1,4 +1,4 @@
-use crate::parse::Node;
+use crate::ast::{Expression, Infix, Literal, Statement};
 use std::collections::HashMap;
 
 #[derive(Debug, PartialEq)]
@@ -23,7 +23,7 @@ impl Evaluator {
         Self { local_variables }
     }
 
-    pub fn eval(&mut self, node: Node) -> Option<Object> {
+    pub fn eval(&mut self, node: Statement) -> Option<Object> {
         self.eval_stmt(&node)
     }
 
@@ -48,16 +48,22 @@ impl Evaluator {
         }
     }
 
-    fn eval_stmt(&mut self, node: &Node) -> Option<Object> {
+    fn eval_stmt(&mut self, node: &Statement) -> Option<Object> {
         match node {
-            Node::If(cond, then) => {
+            Statement::Expression(expr) => Some(self.eval_expr(expr)),
+            Statement::If { cond, then } => {
                 let obj = self.eval_expr(cond);
                 if self.obj_to_bool(&obj) {
                     self.eval_stmt(then);
                 }
                 None
             }
-            Node::For(init, cond, inc, then) => {
+            Statement::For {
+                init,
+                cond,
+                inc,
+                then,
+            } => {
                 if let Some(node) = init {
                     self.eval_expr(node);
                 }
@@ -82,20 +88,54 @@ impl Evaluator {
 
                 None
             }
-            Node::Print(val) => {
+            Statement::Print(val) => {
                 let obj = self.eval_expr(val);
                 let n = self.expect_num_obj(&obj);
                 println!("{}", n);
                 None
             }
-            _ => Some(self.eval_expr(node)),
         }
     }
 
-    fn eval_expr(&mut self, node: &Node) -> Object {
+    fn eval_expr(&mut self, node: &Expression) -> Object {
         match node {
-            Node::Assign(lhs, rhs) => {
-                if let Node::LVar(name) = lhs.as_ref() {
+            Expression::Ident(ident) => self.eval_ident_expr(ident),
+            Expression::Literal(literal) => self.eval_literal_expr(literal),
+            Expression::Infix { op, lhs, rhs } => self.eval_infix_expr(op, lhs, rhs),
+            _ => panic!("unknown node: {:?}", node),
+        }
+    }
+
+    fn eval_ident_expr(&self, ident: &String) -> Object {
+        let n = self.get_lvar(ident);
+        Object::Num(n)
+    }
+
+    fn eval_literal_expr(&self, literal: &Literal) -> Object {
+        match literal {
+            Literal::Int(n) => Object::Num(*n),
+            _ => panic!("unknown literal: {:?}", literal),
+        }
+    }
+
+    fn eval_infix_expr(&mut self, op: &Infix, lhs: &Expression, rhs: &Expression) -> Object {
+        match op {
+            Infix::Plus => {
+                let lhs_obj = self.eval_expr(lhs);
+                let rhs_obj = self.eval_expr(rhs);
+                let lhs = self.expect_num_obj(&lhs_obj);
+                let rhs = self.expect_num_obj(&rhs_obj);
+                Object::Num(lhs + rhs)
+            }
+            Infix::Minus => {
+                let lhs_obj = self.eval_expr(lhs);
+                let rhs_obj = self.eval_expr(rhs);
+                let lhs = self.expect_num_obj(&lhs_obj);
+                let rhs = self.expect_num_obj(&rhs_obj);
+                Object::Num(lhs - rhs)
+            }
+            Infix::Assign => {
+                if let Expression::Ident(name) = lhs {
                     let obj = self.eval_expr(rhs);
                     let n = self.expect_num_obj(&obj);
                     self.local_variables.insert(name.to_string(), n);
@@ -104,68 +144,48 @@ impl Evaluator {
                     panic!("syntax error")
                 }
             }
-            Node::Eq(lhs, rhs) => {
+            Infix::Equal => {
                 let lhs_obj = self.eval_expr(lhs);
                 let rhs_obj = self.eval_expr(rhs);
                 let lhs = self.expect_num_obj(&lhs_obj);
                 let rhs = self.expect_num_obj(&rhs_obj);
                 Object::Boolean(lhs == rhs)
             }
-            Node::Ne(lhs, rhs) => {
+            Infix::NotEqual => {
                 let lhs_obj = self.eval_expr(lhs);
                 let rhs_obj = self.eval_expr(rhs);
                 let lhs = self.expect_num_obj(&lhs_obj);
                 let rhs = self.expect_num_obj(&rhs_obj);
                 Object::Boolean(lhs != rhs)
             }
-            Node::LT(lhs, rhs) => {
-                let lhs_obj = self.eval_expr(lhs);
-                let rhs_obj = self.eval_expr(rhs);
-                let lhs = self.expect_num_obj(&lhs_obj);
-                let rhs = self.expect_num_obj(&rhs_obj);
-                Object::Boolean(lhs < rhs)
-            }
-            Node::LE(lhs, rhs) => {
-                let lhs_obj = self.eval_expr(lhs);
-                let rhs_obj = self.eval_expr(rhs);
-                let lhs = self.expect_num_obj(&lhs_obj);
-                let rhs = self.expect_num_obj(&rhs_obj);
-                Object::Boolean(lhs <= rhs)
-            }
-            Node::GT(lhs, rhs) => {
+            Infix::GreaterThan => {
                 let lhs_obj = self.eval_expr(lhs);
                 let rhs_obj = self.eval_expr(rhs);
                 let lhs = self.expect_num_obj(&lhs_obj);
                 let rhs = self.expect_num_obj(&rhs_obj);
                 Object::Boolean(lhs > rhs)
             }
-            Node::GE(lhs, rhs) => {
+            Infix::GreaterThanEqual => {
                 let lhs_obj = self.eval_expr(lhs);
                 let rhs_obj = self.eval_expr(rhs);
                 let lhs = self.expect_num_obj(&lhs_obj);
                 let rhs = self.expect_num_obj(&rhs_obj);
                 Object::Boolean(lhs >= rhs)
             }
-            Node::Add(lhs, rhs) => {
+            Infix::LessThan => {
                 let lhs_obj = self.eval_expr(lhs);
                 let rhs_obj = self.eval_expr(rhs);
                 let lhs = self.expect_num_obj(&lhs_obj);
                 let rhs = self.expect_num_obj(&rhs_obj);
-                Object::Num(lhs + rhs)
+                Object::Boolean(lhs < rhs)
             }
-            Node::Sub(lhs, rhs) => {
+            Infix::LessThanEqual => {
                 let lhs_obj = self.eval_expr(lhs);
                 let rhs_obj = self.eval_expr(rhs);
                 let lhs = self.expect_num_obj(&lhs_obj);
                 let rhs = self.expect_num_obj(&rhs_obj);
-                Object::Num(lhs - rhs)
+                Object::Boolean(lhs <= rhs)
             }
-            Node::Num(n) => Object::Num(*n),
-            Node::LVar(name) => {
-                let n = self.get_lvar(name);
-                Object::Num(n)
-            }
-            _ => panic!("unknown node: {:?}", node),
         }
     }
 }
