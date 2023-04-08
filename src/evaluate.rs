@@ -78,7 +78,7 @@ impl Evaluator {
             }
             Statement::Print(val) => {
                 let obj = self.eval_expr(val);
-                println!("{:?}", obj);
+                println!("{}", obj);
                 None
             }
         }
@@ -119,9 +119,9 @@ impl Evaluator {
         match lhs {
             Object::Int(left) => match rhs {
                 Object::Int(right) => self.eval_infix_int_expr(op, left, right),
-                _ => panic!("mismatch type: {:?} {:?} {:?}", lhs, op, rhs),
+                _ => panic!("mismatch type: {} {:?} {}", lhs, op, rhs),
             },
-            _ => panic!("unknown operation: {:?} {:?} {:?}", lhs, op, rhs),
+            _ => panic!("unknown operation: {} {:?} {}", lhs, op, rhs),
         }
     }
 

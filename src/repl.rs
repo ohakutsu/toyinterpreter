@@ -20,12 +20,13 @@ pub fn start() {
             break;
         }
 
+        input.push(';');
         let tokens = Lexer::new(input.trim()).collect();
         let nodes = Parser::new(tokens).parse();
 
         for node in nodes {
             if let Some(obj) = evaluator.eval(node) {
-                println!("{:?}", obj);
+                println!("{}", obj);
             }
         }
     }
