@@ -2,29 +2,6 @@ use crate::ast::{Expression, Infix, Literal, Statement};
 use crate::token::Token;
 use std::{iter::Peekable, vec::IntoIter};
 
-#[derive(Debug, PartialEq)]
-pub enum Node {
-    Num(i32),                     // number
-    Add(Box<Node>, Box<Node>),    // "+"
-    Sub(Box<Node>, Box<Node>),    // "-"
-    Assign(Box<Node>, Box<Node>), // "="
-    LVar(String),                 // local variable
-    Eq(Box<Node>, Box<Node>),     // "=="
-    Ne(Box<Node>, Box<Node>),     // "!="
-    LE(Box<Node>, Box<Node>),     // "<="
-    GE(Box<Node>, Box<Node>),     // ">=",
-    LT(Box<Node>, Box<Node>),     // "<"
-    GT(Box<Node>, Box<Node>),     // ">"
-    If(Box<Node>, Box<Node>),     // "if" "(" cond ")" then
-    Print(Box<Node>),             // "print"
-    For(
-        Option<Box<Node>>,
-        Option<Box<Node>>,
-        Option<Box<Node>>,
-        Box<Node>,
-    ), // "for" "(" init ";" cond ";" inc ")" then
-}
-
 pub struct Parser {
     tokens: Peekable<IntoIter<Token>>,
 }
