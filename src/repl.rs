@@ -20,7 +20,6 @@ pub fn start() {
             break;
         }
 
-        input.push(';');
         let tokens = Lexer::new(input.trim()).collect();
         let nodes = Parser::new(tokens).parse();
 
