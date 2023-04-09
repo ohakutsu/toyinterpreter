@@ -7,6 +7,8 @@ pub enum Literal {
 pub enum Infix {
     Plus,             // "+"
     Minus,            // "-"
+    Multiply,         // "*"
+    Divide,           // "/"
     Assign,           // "="
     Equal,            // "=="
     NotEqual,         // "!="

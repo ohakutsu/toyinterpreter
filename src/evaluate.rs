@@ -129,6 +129,13 @@ impl Evaluator {
         match op {
             Infix::Plus => Object::Int(lhs + rhs),
             Infix::Minus => Object::Int(lhs - rhs),
+            Infix::Multiply => Object::Int(lhs * rhs),
+            Infix::Divide => {
+                if rhs == 0 {
+                    panic!("Zero division error");
+                }
+                Object::Int(lhs / rhs)
+            }
             Infix::Equal => Object::Boolean(lhs == rhs),
             Infix::NotEqual => Object::Boolean(lhs != rhs),
             Infix::GreaterThan => Object::Boolean(lhs > rhs),
@@ -181,6 +188,15 @@ mod tests {
                 Some(Object::Int(6)),
                 Some(Object::Int(6)),
             ],
+        );
+    }
+
+    #[test]
+    fn test_evaluator_infix() {
+        assert_eval(
+            "a = 1 + 2 * 3;\
+             b = 4 / 2 - 1;",
+            &[Some(Object::Int(7)), Some(Object::Int(1))],
         );
     }
 

@@ -107,6 +107,8 @@ impl Iterator for Lexer<'_> {
                     let token = match &c {
                         '+' => Token::Plus,
                         '-' => Token::Minus,
+                        '*' => Token::Asterisk,
+                        '/' => Token::Slash,
                         '=' => Token::Assign,
                         '>' => Token::GreaterThan,
                         '<' => Token::LessThan,
@@ -261,6 +263,25 @@ mod tests {
                 Token::Ident("i".to_string()),
                 Token::SemiColon,
             ],
-        )
+        );
+
+        assert_tokens(
+            "a = 2 * 3;\
+             b = 4 / 2;",
+            vec![
+                Token::Ident("a".to_string()),
+                Token::Assign,
+                Token::Int(2),
+                Token::Asterisk,
+                Token::Int(3),
+                Token::SemiColon,
+                Token::Ident("b".to_string()),
+                Token::Assign,
+                Token::Int(4),
+                Token::Slash,
+                Token::Int(2),
+                Token::SemiColon,
+            ],
+        );
     }
 }

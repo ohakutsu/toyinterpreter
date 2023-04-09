@@ -7,6 +7,8 @@ pub enum Token {
     // Operators
     Plus,             // "+"
     Minus,            // "-"
+    Asterisk,         // "*"
+    Slash,            //"/"
     Assign,           // "="
     Equal,            // "=="
     NotEqual,         // "!="

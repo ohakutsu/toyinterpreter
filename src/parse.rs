@@ -5,7 +5,6 @@ use std::{iter::Peekable, vec::IntoIter};
 pub struct Parser {
     tokens: Peekable<IntoIter<Token>>,
 }
-
 impl Parser {
     pub fn new(tokens: Vec<Token>) -> Self {
         let tokens = tokens.into_iter().peekable();
@@ -150,19 +149,42 @@ impl Parser {
         node
     }
 
-    // add = primary ("+" primary | "-" primary)*
+    // add = mul ("+" mul | "-" mul)*
     fn add(&mut self) -> Expression {
-        let mut node = self.primary();
+        let mut node = self.mul();
         loop {
             if self.consume_token(Token::Plus) {
                 node = Expression::Infix {
                     op: Infix::Plus,
                     lhs: Box::new(node),
-                    rhs: Box::new(self.primary()),
+                    rhs: Box::new(self.mul()),
                 };
             } else if self.consume_token(Token::Minus) {
                 node = Expression::Infix {
                     op: Infix::Minus,
+                    lhs: Box::new(node),
+                    rhs: Box::new(self.mul()),
+                };
+            } else {
+                break;
+            }
+        }
+        node
+    }
+
+    // mul = primary ("*" primary | "/" primary)*
+    fn mul(&mut self) -> Expression {
+        let mut node = self.primary();
+        loop {
+            if self.consume_token(Token::Asterisk) {
+                node = Expression::Infix {
+                    op: Infix::Multiply,
+                    lhs: Box::new(node),
+                    rhs: Box::new(self.primary()),
+                };
+            } else if self.consume_token(Token::Slash) {
+                node = Expression::Infix {
+                    op: Infix::Divide,
                     lhs: Box::new(node),
                     rhs: Box::new(self.primary()),
                 };
@@ -216,7 +238,11 @@ mod tests {
         assert_nodes(
             "abc = 123;\
              def = 456;\
-             ans = abc + def;",
+             ans1 = abc + def;\
+             ans2 = abc - def;\
+             ans3 = abc * def;\
+             ans4 = abc / def;\
+             ans5 = 1 + 2 * 3;",
             vec![
                 Statement::Expression(Expression::Infix {
                     op: Infix::Assign,
@@ -230,11 +256,51 @@ mod tests {
                 }),
                 Statement::Expression(Expression::Infix {
                     op: Infix::Assign,
-                    lhs: Box::new(Expression::Ident("ans".to_string())),
+                    lhs: Box::new(Expression::Ident("ans1".to_string())),
                     rhs: Box::new(Expression::Infix {
                         op: Infix::Plus,
                         lhs: Box::new(Expression::Ident("abc".to_string())),
                         rhs: Box::new(Expression::Ident("def".to_string())),
+                    }),
+                }),
+                Statement::Expression(Expression::Infix {
+                    op: Infix::Assign,
+                    lhs: Box::new(Expression::Ident("ans2".to_string())),
+                    rhs: Box::new(Expression::Infix {
+                        op: Infix::Minus,
+                        lhs: Box::new(Expression::Ident("abc".to_string())),
+                        rhs: Box::new(Expression::Ident("def".to_string())),
+                    }),
+                }),
+                Statement::Expression(Expression::Infix {
+                    op: Infix::Assign,
+                    lhs: Box::new(Expression::Ident("ans3".to_string())),
+                    rhs: Box::new(Expression::Infix {
+                        op: Infix::Multiply,
+                        lhs: Box::new(Expression::Ident("abc".to_string())),
+                        rhs: Box::new(Expression::Ident("def".to_string())),
+                    }),
+                }),
+                Statement::Expression(Expression::Infix {
+                    op: Infix::Assign,
+                    lhs: Box::new(Expression::Ident("ans4".to_string())),
+                    rhs: Box::new(Expression::Infix {
+                        op: Infix::Divide,
+                        lhs: Box::new(Expression::Ident("abc".to_string())),
+                        rhs: Box::new(Expression::Ident("def".to_string())),
+                    }),
+                }),
+                Statement::Expression(Expression::Infix {
+                    op: Infix::Assign,
+                    lhs: Box::new(Expression::Ident("ans5".to_string())),
+                    rhs: Box::new(Expression::Infix {
+                        op: Infix::Plus,
+                        lhs: Box::new(Expression::Literal(Literal::Int(1))),
+                        rhs: Box::new(Expression::Infix {
+                            op: Infix::Multiply,
+                            lhs: Box::new(Expression::Literal(Literal::Int(2))),
+                            rhs: Box::new(Expression::Literal(Literal::Int(3))),
+                        }),
                     }),
                 }),
             ],
