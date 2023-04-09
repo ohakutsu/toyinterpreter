@@ -114,6 +114,8 @@ impl Iterator for Lexer<'_> {
                         '<' => Token::LessThan,
                         '(' => Token::LParen,
                         ')' => Token::RParen,
+                        '{' => Token::LBrace,
+                        '}' => Token::RBrace,
                         ';' => Token::SemiColon,
                         _ => panic!("unexpected punct: {}", c),
                     };
@@ -281,6 +283,39 @@ mod tests {
                 Token::Slash,
                 Token::Int(2),
                 Token::SemiColon,
+            ],
+        );
+
+        assert_tokens(
+            "i = 0;\
+             for (; i < 10; ) {\
+                i = i + 1;\
+                print i;\
+             }",
+            vec![
+                Token::Ident("i".to_string()),
+                Token::Assign,
+                Token::Int(0),
+                Token::SemiColon,
+                Token::KeywordFor,
+                Token::LParen,
+                Token::SemiColon,
+                Token::Ident("i".to_string()),
+                Token::LessThan,
+                Token::Int(10),
+                Token::SemiColon,
+                Token::RParen,
+                Token::LBrace,
+                Token::Ident("i".to_string()),
+                Token::Assign,
+                Token::Ident("i".to_string()),
+                Token::Plus,
+                Token::Int(1),
+                Token::SemiColon,
+                Token::KeywordPrint,
+                Token::Ident("i".to_string()),
+                Token::SemiColon,
+                Token::RBrace,
             ],
         );
     }

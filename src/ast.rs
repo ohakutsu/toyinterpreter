@@ -32,6 +32,7 @@ pub enum Statement {
         then: Box<Statement>,
     },
     Print(Expression),
+    Block(Vec<Statement>),
 }
 
 #[derive(Debug, PartialEq)]

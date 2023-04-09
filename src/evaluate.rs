@@ -81,6 +81,13 @@ impl Evaluator {
                 println!("{}", obj);
                 None
             }
+            Statement::Block(stmt_list) => {
+                let mut ret = None;
+                for stmt in stmt_list {
+                    ret = self.eval_stmt(stmt);
+                }
+                ret
+            }
         }
     }
 
@@ -248,6 +255,16 @@ mod tests {
              i;",
             &[Some(Object::Int(2)), None, Some(Object::Int(2))],
         );
+
+        assert_eval(
+            "i = 1;\
+             if (i > 0) {\
+                i = i + 10;\
+                print i;\
+             }\
+             i;",
+            &[Some(Object::Int(1)), None, Some(Object::Int(11))],
+        )
     }
 
     #[test]
@@ -273,6 +290,16 @@ mod tests {
              for (; i < 3;) i = i + 1;\
              i;",
             &[Some(Object::Int(0)), None, Some(Object::Int(3))],
+        );
+
+        assert_eval(
+            "i = 0;\
+             for (; i < 10; ) {\
+                i = i + 1;\
+                print i;\
+             }\
+             i;",
+            &[Some(Object::Int(0)), None, Some(Object::Int(10))],
         );
     }
 }

@@ -27,5 +27,7 @@ pub enum Token {
     // Delimiters
     LParen,    // "("
     RParen,    // ")"
+    LBrace,    // "{"
+    RBrace,    // "}"
     SemiColon, // ";"
 }

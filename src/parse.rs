@@ -24,6 +24,7 @@ impl Parser {
     // stmt = "if" "(" expr ")" stmt
     //      | "for" "(" expr? ";" expr? ";" expr? ")" stmt
     //      | "print" expr ";"
+    //      | "{" stmt* "}"
     //      | expr ";"
     fn stmt(&mut self) -> Statement {
         if self.consume_token(Token::KeywordIf) {
@@ -66,6 +67,14 @@ impl Parser {
             let val = self.expr();
             self.expect_token(Token::SemiColon);
             return Statement::Print(val);
+        }
+
+        if self.consume_token(Token::LBrace) {
+            let mut stmt_list = Vec::new();
+            while !self.consume_token(Token::RBrace) {
+                stmt_list.push(self.stmt());
+            }
+            return Statement::Block(stmt_list);
         }
 
         let node = self.expr();
@@ -395,6 +404,42 @@ mod tests {
                     cond: None,
                     inc: None,
                     then: Box::new(Statement::Print(Expression::Ident("i".to_string()))),
+                },
+            ],
+        );
+
+        assert_nodes(
+            "i = 0;\
+             for (; i < 10; ) {\
+                i = i + 1;\
+                print i;\
+             }",
+            vec![
+                Statement::Expression(Expression::Infix {
+                    op: Infix::Assign,
+                    lhs: Box::new(Expression::Ident("i".to_string())),
+                    rhs: Box::new(Expression::Literal(Literal::Int(0))),
+                }),
+                Statement::For {
+                    init: None,
+                    cond: Some(Box::new(Expression::Infix {
+                        op: Infix::LessThan,
+                        lhs: Box::new(Expression::Ident("i".to_string())),
+                        rhs: Box::new(Expression::Literal(Literal::Int(10))),
+                    })),
+                    inc: None,
+                    then: Box::new(Statement::Block(vec![
+                        Statement::Expression(Expression::Infix {
+                            op: Infix::Assign,
+                            lhs: Box::new(Expression::Ident("i".to_string())),
+                            rhs: Box::new(Expression::Infix {
+                                op: Infix::Plus,
+                                lhs: Box::new(Expression::Ident("i".to_string())),
+                                rhs: Box::new(Expression::Literal(Literal::Int(1))),
+                            }),
+                        }),
+                        Statement::Print(Expression::Ident("i".to_string())),
+                    ])),
                 },
             ],
         );
